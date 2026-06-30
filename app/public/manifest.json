@@ -1,0 +1,18 @@
+{
+  "name": "Trends Mining Simulator",
+  "short_name": "Trend Mine",
+  "description": "Mine $TREND from daily social trend veins on Base",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0052FF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
