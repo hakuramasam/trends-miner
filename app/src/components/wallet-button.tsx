@@ -1,136 +1,189 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  useAccount,
-  useConnect,
-  useDisconnect,
-  useSignMessage,
-  useSwitchChain,
-} from "wagmi";
-import { SiweMessage } from "siwe";
-import { BASE_CHAIN_ID } from "@/lib/constants";
-import { shortenAddress } from "@/lib/format";
+import { useState, useEffect, useCallback } from 'react';
+import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
+import { Address, verifyMessage } from 'viem';
+import { getFarcasterUserByAddress } from '@/lib/neynar';
+import { signIn, signOut, useSession } from 'next-auth/react';
 
-export function WalletButton() {
-  const { address, isConnected, chainId } = useAccount();
-  const { connect, connectors, isPending: isConnecting } = useConnect();
+export interface WalletButtonProps {
+  className?: string;
+  showFarcaster?: boolean;
+}
+
+export function WalletButton({ className = '', showFarcaster = true }: WalletButtonProps) {
+  const { address, isConnected, connector } = useAccount();
+  const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
-  const { switchChainAsync } = useSwitchChain();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { data: session, status: sessionStatus } = useSession();
+
+  const [farcasterUser, setFarcasterUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const checkSession = useCallback(async () => {
-    const res = await fetch("/api/session");
-    const data = await res.json();
-    setIsLoggedIn(Boolean(data.isLoggedIn));
-  }, []);
-
   useEffect(() => {
-    checkSession();
-  }, [checkSession, address]);
+    if (isConnected && address && showFarcaster) {
+      loadFarcasterUser();
+    } else {
+      setFarcasterUser(null);
+    }
+  }, [address, isConnected, showFarcaster]);
 
-  const signIn = async () => {
-    if (!address || !chainId) return;
-    setIsSigning(true);
+  const loadFarcasterUser = useCallback(async () => {
+    if (!address) return;
+    setIsLoading(true);
     setError(null);
     try {
-      if (chainId !== BASE_CHAIN_ID) {
-        await switchChainAsync({ chainId: BASE_CHAIN_ID });
+      const user = await getFarcasterUserByAddress(address);
+      setFarcasterUser(user);
+    } catch {
+      setFarcasterUser(null);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [address]);
+
+  const handleFarcasterLogin = useCallback(async () => {
+    if (!address || !connector) return;
+    setIsSigning(true);
+    setError(null);
+
+    try {
+      const message = 'Sign in with Farcaster to Trends Miner.\n\nWallet: ' + address + '\nNonce: ' + Date.now();
+      const signature = await signMessageAsync({ message });
+
+      const isValid = await verifyMessage({
+        address,
+        message,
+        signature,
+      });
+
+      if (!isValid) {
+        throw new Error('Invalid signature');
       }
 
-      const nonceRes = await fetch("/api/siwe/nonce");
-      const { nonce } = await nonceRes.json();
-
-      const message = new SiweMessage({
-        domain: window.location.host,
+      const result = await signIn('farcaster', {
         address,
-        statement: "Sign in to Trends Mining Simulator",
-        uri: window.location.origin,
-        version: "1",
-        chainId: BASE_CHAIN_ID,
-        nonce,
+        message,
+        signature,
+        redirect: false,
       });
 
-      const signature = await signMessageAsync({
-        message: message.prepareMessage(),
-      });
+      if (result?.error) {
+        throw new Error(result.error);
+      }
 
-      const verifyRes = await fetch("/api/siwe/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: message.prepareMessage(),
-          signature,
-        }),
-      });
-
-      if (!verifyRes.ok) throw new Error("SIWE verification failed");
-      setIsLoggedIn(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Sign-in failed");
+      await loadFarcasterUser();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsSigning(false);
     }
-  };
+  }, [address, connector, signMessageAsync, loadFarcasterUser]);
 
-  const signOut = async () => {
-    await fetch("/api/siwe/logout", { method: "POST" });
-    disconnect();
-    setIsLoggedIn(false);
-  };
+  const handleConnect = useCallback(async () => {
+    if (connectors.length === 0) {
+      setError('No wallet connectors available');
+      return;
+    }
+    await connect({ connector: connectors[0] });
+  }, [connect, connectors]);
 
-  if (isConnected && address) {
+  const handleDisconnect = useCallback(async () => {
+    try {
+      await disconnect();
+      if (session) {
+        await signOut({ redirect: false });
+      }
+      setFarcasterUser(null);
+    } catch (err) {
+      console.error('Failed to disconnect:', err);
+    }
+  }, [disconnect, session]);
+
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-end gap-2">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-zinc-400">
-            {shortenAddress(address)}
-          </span>
-          {isLoggedIn ? (
+      <div className={'flex items-center gap-2 ' + className}>
+        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        <span>Loading...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={'text-red-500 ' + className}>
+        {error}
+        <button onClick={() => setError(null)} className="ml-2 text-sm underline">
+          Dismiss
+        </button>
+      </div>
+    );
+  }
+
+  if (isConnected) {
+    return (
+      <div className={'flex items-center gap-3 ' + className}>
+        {isSigning ? (
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        ) : farcasterUser ? (
+          <div className="flex items-center gap-2">
+            {farcasterUser.pfpUrl && (
+              <img
+                src={farcasterUser.pfpUrl}
+                alt={farcasterUser.displayName}
+                className="w-8 h-8 rounded-full"
+              />
+            )}
+            <div className="flex flex-col">
+              <span className="font-medium text-sm">
+                {farcasterUser.displayName || farcasterUser.username || 'Farcaster User'}
+              </span>
+              <span className="text-xs text-gray-400">
+                {address?.slice(0, 6)}...{address?.slice(-4)}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <span className="font-medium text-sm">Connected</span>
+            <span className="text-xs text-gray-400">
+              {address?.slice(0, 6)}...{address?.slice(-4)}
+            </span>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {showFarcaster && !farcasterUser && (
             <button
-              type="button"
-              onClick={signOut}
-              className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-red-500/50 hover:text-red-400"
-            >
-              Sign out
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={signIn}
+              onClick={handleFarcasterLogin}
               disabled={isSigning}
-              className="rounded-lg bg-[#0052FF] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#0046db] disabled:opacity-50"
+              className="px-3 py-1.5 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSigning ? "Signing…" : "Sign in (SIWE)"}
+              {isSigning ? 'Signing...' : 'Link Farcaster'}
             </button>
           )}
+          <button
+            onClick={handleDisconnect}
+            className="px-3 py-1.5 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600"
+          >
+            Disconnect
+          </button>
         </div>
-        {isLoggedIn && (
-          <span className="text-[10px] uppercase tracking-widest text-emerald-400">
-            Session active
-          </span>
-        )}
-        {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-wrap justify-end gap-2">
-      {connectors.map((connector) => (
-        <button
-          key={connector.uid}
-          type="button"
-          onClick={() => connect({ connector })}
-          disabled={isConnecting}
-          className="rounded-lg bg-[#0052FF] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0046db] disabled:opacity-50"
-        >
-          {isConnecting ? "Connecting…" : connector.name}
-        </button>
-      ))}
-    </div>
+    <button
+      onClick={handleConnect}
+      className={'px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors ' + className}
+    >
+      Connect Wallet
+    </button>
   );
 }
+
+export default WalletButton;
