@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  trends-miner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trends-miner
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - TREASURY_PRIVATE_KEY=${TREASURY_PRIVATE_KEY}
+      - NEYNAR_API_KEY=${NEYNAR_API_KEY}
+      - TWITTER_API_KEY=${TWITTER_API_KEY}
+      - NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=${NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID}
+      - NEXT_PUBLIC_EMPIRE_API_BASE=https://www.empirebuilder.world/api
+      - ADMIN_SECRET=${ADMIN_SECRET:-change-me}
+    volumes:
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - trends-miner-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+networks:
+  trends-miner-network:
+    driver: bridge
