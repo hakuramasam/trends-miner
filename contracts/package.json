@@ -1,0 +1,43 @@
+{
+  "name": "trends-miner-contracts",
+  "version": "1.0.0",
+  "description": "Trends Miner Smart Contracts",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:base-sepolia": "hardhat run scripts/deploy.js --network base-sepolia",
+    "deploy:base": "hardhat run scripts/deploy.js --network base",
+    "verify:base-sepolia": "hardhat verify --network base-sepolia",
+    "verify:base": "hardhat verify --network base"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "base",
+    "game",
+    "mining",
+    "governance"
+  ],
+  "author": "Spat AI / HakuramaSam",
+  "license": "MIT",
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.0.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@typechain/hardhat": "^9.0.0",
+    "@typechain/ethers-v6": "^0.2.0",
+    "chai": "^4.3.7",
+    "ethers": "^6.13.0",
+    "hardhat": "^2.22.0",
+    "hardhat-gas-reporter": "^1.0.9",
+    "solidity-coverage": "^0.8.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.0"
+  }
+}
