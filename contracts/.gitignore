@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+artifacts/
+cache/
+typechain-types/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Hardhat
+.coverage
+.coverage.json
+
+# TypeScript
+dist/
+*.tsbuildinfo
