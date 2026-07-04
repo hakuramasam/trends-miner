@@ -21,14 +21,6 @@ contract TrendsMinerTimelock is TimelockController, Ownable {
         grantRole(CANCELLER_ROLE, _governor);
     }
 
-    constructor(address _governor) 
-        TimelockController(MIN_DELAY, [], []) 
-    {
-        grantRole(PROPOSER_ROLE, _governor);
-        grantRole(EXECUTOR_ROLE, address(this));
-        grantRole(CANCELLER_ROLE, _governor);
-    }
-
     function propose(
         address[] memory targets,
         uint256[] memory values,
