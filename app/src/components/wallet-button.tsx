@@ -46,12 +46,15 @@ export function WalletButton({ className = '', showFarcaster = true }: WalletBut
   }, [address]);
 
   const handleFarcasterLogin = useCallback(async () => {
-    if (!address || !connector) return;
+    if (!address || !connector || !signMessageAsync) return;
+    
     setIsSigning(true);
     setError(null);
 
     try {
-      const message = 'Sign in with Farcaster to Trends Miner.\n\nWallet: ' + address + '\nNonce: ' + Date.now();
+      const nonce = Date.now().toString();
+      const message = `Sign in with Farcaster to Trends Miner.\n\nWallet: ${address}\nNonce: ${nonce}`;
+      
       const signature = await signMessageAsync({ message });
 
       const isValid = await verifyMessage({
@@ -93,15 +96,13 @@ export function WalletButton({ className = '', showFarcaster = true }: WalletBut
 
   const handleDisconnect = useCallback(async () => {
     try {
+      await signOut({ redirect: false });
       await disconnect();
-      if (session) {
-        await signOut({ redirect: false });
-      }
       setFarcasterUser(null);
     } catch (err) {
       console.error('Failed to disconnect:', err);
     }
-  }, [disconnect, session]);
+  }, [disconnect]);
 
   if (isLoading) {
     return (
