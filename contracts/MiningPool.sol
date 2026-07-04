@@ -11,6 +11,7 @@ contract MiningPool is Ownable {
     uint256 public miningRate;
     uint256 public tapMultiplier;
     uint256 public totalMined;
+    uint256 public constant MAX_ENERGY = 100;
 
     struct Guild {
         uint256 requirement;
@@ -119,6 +120,10 @@ contract MiningPool is Ownable {
         trendToken.transferFrom(msg.sender, address(this), amount);
         userD.stakedAmount += amount;
 
+        if (userD.energy == 0) {
+            userD.energy = MAX_ENERGY;
+        }
+
         if (userD.stakedAmount >= guilds[2].requirement) {
             userD.guildId = 2;
         } else if (userD.stakedAmount >= guilds[1].requirement) {
@@ -136,6 +141,7 @@ contract MiningPool is Ownable {
         require(userD.stakedAmount >= amount, "MiningPool: insufficient stake");
 
         userD.stakedAmount -= amount;
+
         if (userD.stakedAmount >= guilds[2].requirement) {
             userD.guildId = 2;
         } else if (userD.stakedAmount >= guilds[1].requirement) {
