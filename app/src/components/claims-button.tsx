@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSignMessage } from 'wagmi';
 import { Address } from 'viem';
 import { fetchEmpireUser } from '@/lib/empire';
 import { calculateStakeMultiplier } from '@/lib/constants';
@@ -13,6 +13,8 @@ export interface ClaimsButtonProps {
 
 export function ClaimsButton({ className = '' }: ClaimsButtonProps) {
   const { address, isConnected } = useAccount();
+  const { signMessageAsync } = useSignMessage();
+  
   const [empireUser, setEmpireUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +47,8 @@ export function ClaimsButton({ className = '' }: ClaimsButtonProps) {
   }, [address, isConnected, loadUserData]);
 
   const handleClaim = useCallback(async () => {
-    if (!address || !empireUser) return;
+    if (!address || !empireUser || !signMessageAsync) return;
+
     setIsClaiming(true);
     setError(null);
 
@@ -53,6 +56,14 @@ export function ClaimsButton({ className = '' }: ClaimsButtonProps) {
       const multiplier = calculateStakeMultiplier(empireUser.staked);
       const claimAmount = calculateClaimAmount(empireUser, multiplier);
 
+      // Generate nonce and message
+      const nonce = Date.now().toString();
+      const message = `Claim ${formatEther(claimAmount)} $TREND from Trends Miner. Nonce: ${nonce}`;
+
+      // Sign the message
+      const signature = await signMessageAsync({ message });
+
+      // Submit claim to API
       const response = await fetch('/api/claims', {
         method: 'POST',
         headers: {
@@ -61,12 +72,13 @@ export function ClaimsButton({ className = '' }: ClaimsButtonProps) {
         body: JSON.stringify({
           address,
           amount: claimAmount.toString(),
-          signature: 'placeholder',
-          nonce: Date.now().toString(),
+          signature,
+          nonce,
         }),
       });
 
       const data = await response.json();
+
       if (!response.ok) {
         throw new Error(data.error || 'Claim failed');
       }
@@ -81,7 +93,7 @@ export function ClaimsButton({ className = '' }: ClaimsButtonProps) {
       setIsClaiming(false);
       setTimeout(loadUserData, 2000);
     }
-  }, [address, empireUser, loadUserData]);
+  }, [address, empireUser, loadUserData, signMessageAsync]);
 
   const calculateClaimAmount = (user: any, multiplier: number): bigint => {
     const baseAmount = 1000n;
