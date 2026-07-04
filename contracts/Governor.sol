@@ -34,17 +34,7 @@ contract TrendsMinerGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(Governor, GovernorSettings) returns (uint256) {
-        return super._execute(proposalId, targets, values, calldatas, descriptionHash);
-    }
-
-    function _execute(
-        uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor, GovernorVotes) returns (uint256) {
+    ) internal override(Governor, GovernorSettings, GovernorVotes) returns (uint256) {
         return super._execute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -53,16 +43,7 @@ contract TrendsMinerGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(Governor, GovernorSettings) returns (uint256) {
-        return super._cancel(targets, values, calldatas, descriptionHash);
-    }
-
-    function _cancel(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor, GovernorVotes) returns (uint256) {
+    ) internal override(Governor, GovernorSettings, GovernorVotes) returns (uint256) {
         return super._cancel(targets, values, calldatas, descriptionHash);
     }
 
